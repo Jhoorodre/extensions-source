@@ -117,7 +117,9 @@ jobs:
 
   mirror:
     name: Mirror to private repo
-    if: github.event_name == 'push' && github.ref == 'refs/heads/nox'
+    # Depois da publicação, para copiar o APK novo; roda mesmo se o build falhar, para o código não ficar sem backup.
+    needs: publish
+    if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/nox' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -141,7 +143,15 @@ jobs:
             src/pt/baozinho
           path: src
 
-      # Snapshot do código na branch nox do repositório privado (sem os workflows, que ficam só no fork).
+      - name: Checkout published repo branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: repo
+          fetch-depth: 0
+          persist-credentials: false
+          path: published
+
+      # nox: snapshot do código (sem os workflows, que ficam só no fork). repo: cópia exata do repositório de extensões, com o APK.
       - name: Mirror
         env:
           DEPLOY_KEY: ${{ secrets.MIRROR_DEPLOY_KEY }}
@@ -154,6 +164,7 @@ jobs:
           chmod 600 ~/.ssh/mirror_key
           curl -fsS https://api.github.com/meta | python3 -c "import json,sys; print(*('github.com ' + k for k in json.load(sys.stdin)['ssh_keys']), sep='\n')" > ~/.ssh/known_hosts
           export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/mirror_key -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=yes"
+          git -C published push --force "$TARGET" HEAD:refs/heads/repo
           subject=$(git -C src log -1 --format=%s)
           git clone -q "$TARGET" mirror
           cd mirror
