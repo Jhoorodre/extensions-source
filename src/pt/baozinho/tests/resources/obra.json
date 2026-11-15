@@ -1,0 +1,76 @@
+{
+ "id": 39,
+ "nome": "O Conceito da Reencarnação",
+ "slug": "o-conceito-da-reencarnacao",
+ "imagem": "obras/capas/3d66ebfbaad82b6b.webp",
+ "banner": "obras/banners/bbc783af7d92ab33.webp",
+ "logo": "obras/logos/18ba05bfc79c7cb0.webp",
+ "descricao": "Renascer não é sorte, é método. Uma história sobre tratar a segunda vida como disciplina — e descobrir onde o método falha.",
+ "titulosAlternativos": "환생의 정석 | Standard of Reincarnation | The Essence of Reincarnation | Hwansaengui Jeongseok | 轉世定律 | O Padrão de Reencarnação",
+ "status": "em_lancamento",
+ "oficial": false,
+ "destaque": false,
+ "vip": false,
+ "desativada": false,
+ "viewsTotal": 103,
+ "viewsSemana": 103,
+ "ratingMedia": 5,
+ "ratingCount": 10,
+ "comentCount": 24,
+ "dataUltimoCap": "2026-09-25T04:15:33.942Z",
+ "previsaoLancamento": "2026-11-11T00:00:00.000Z",
+ "arte": "Lee Sang Kyung",
+ "adaptacao": "Blue-Jaengyee",
+ "criadoEm": "2026-09-16T23:22:25.508Z",
+ "formato": {
+  "id": 2,
+  "nome": "Manhwa",
+  "slug": "manhwa"
+ },
+ "autor": {
+  "id": 6,
+  "nome": "Normal Kim",
+  "slug": "normal-kim"
+ },
+ "studio": {
+  "id": 4,
+  "nome": "MstoryHub",
+  "slug": "mstoryhub"
+ },
+ "_count": {
+  "capitulos": 41
+ },
+ "capitulos": [
+  {
+   "id": 2043,
+   "numero": 41,
+   "nome": "Capítulo 41",
+   "lancadoEm": "2026-11-14T15:00:00.000Z",
+   "gratuito": false,
+   "gratuitoAte": null,
+   "precoEmBaos": 2
+  }
+ ],
+ "tags": [
+  {
+   "id": 1,
+   "nome": "Ação",
+   "slug": "acao"
+  },
+  {
+   "id": 6,
+   "nome": "Fantasia",
+   "slug": "fantasia"
+  },
+  {
+   "id": 28,
+   "nome": "Reencarnação",
+   "slug": "reencarnacao"
+  },
+  {
+   "id": 49,
+   "nome": "Volta no Tempo",
+   "slug": "volta-no-tempo"
+  }
+ ]
+}

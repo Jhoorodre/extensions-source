@@ -1,0 +1,22 @@
+{
+ "id": 2043,
+ "uuid": "f8dd56ce-5eea-4a76-9a62-4e21c3dc7d2f",
+ "obrId": 39,
+ "nome": "Capítulo 41",
+ "descricao": "",
+ "numero": 41,
+ "slug": null,
+ "imagem": "capitulos-capa/c84adf4d60ea1aa7.png",
+ "lancadoEm": "2026-11-14T15:00:00.000Z",
+ "tipo": "imagem",
+ "volume": null,
+ "paginasCount": 72,
+ "viewsTotal": 0,
+ "comentCount": 0,
+ "reacCount": 0,
+ "gratuito": false,
+ "gratuitoAte": null,
+ "precoEmBaos": 2,
+ "criadoEm": "2026-09-20T22:47:51.841Z",
+ "bloqueado": true
+}

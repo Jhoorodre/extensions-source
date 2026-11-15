@@ -1,0 +1,39 @@
+{
+ "id": 2005,
+ "uuid": "0c9ee3b8-e2ee-428e-8ed2-59c40ddb37cb",
+ "obrId": 39,
+ "nome": "Capítulo 3",
+ "descricao": "",
+ "numero": 3,
+ "slug": null,
+ "imagem": "capitulos-capa/53e0a344cb2e96b2.png",
+ "lancadoEm": "2026-11-11T22:00:00.000Z",
+ "tipo": "imagem",
+ "volume": null,
+ "paginasCount": 71,
+ "viewsTotal": 13,
+ "comentCount": 0,
+ "reacCount": 0,
+ "gratuito": true,
+ "gratuitoAte": null,
+ "precoEmBaos": 0,
+ "criadoEm": "2026-09-20T22:47:40.734Z",
+ "conteudoTexto": null,
+ "paginas": [
+  {
+   "id": 45495,
+   "url": "https://cdn.baozinho.com/obras/39/capitulos/3/9b7a24538a54a816.webp",
+   "ordem": 2
+  },
+  {
+   "id": 45494,
+   "url": "https://cdn.baozinho.com/obras/39/capitulos/3/ff5530b042484372.webp",
+   "ordem": 1
+  },
+  {
+   "id": 45493,
+   "url": "https://cdn.baozinho.com/obras/39/capitulos/3/79477ec6dab49534.webp",
+   "ordem": 0
+  }
+ ]
+}

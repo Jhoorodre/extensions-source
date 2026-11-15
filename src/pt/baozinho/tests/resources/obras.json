@@ -1,0 +1,177 @@
+{
+ "data": [
+  {
+   "id": 31,
+   "nome": "Gênio do Teletransporte da Academia Mágica",
+   "slug": "genio-do-teletransporte-da-academia-magica",
+   "imagem": "obras/capas/0dab5f68f02e9379.png",
+   "logo": "obras/logos/e70f38dd61bdbd38.png",
+   "descricao": "Eu, reencarnado logo no pior personagem de todos, Baek Yuseol?!\nDificuldade absurda, desempenho deplorável.\nEm um mundo onde todo mundo usa magia, só por ser incapaz de conjurar feitiços,\nele é o maior lixo da história dos jogos, um personagem que até os jogadores veteranos evitam... Baek Yuseol.\n\n[Com a Conclusão de um Final Ruim, 90% do Aether World foi destruído.]\n[Que alcance o Final Verdadeiro.]\n\nE eu acabei possuindo o corpo desse mesmo Baek Yuseol.\n\nA única habilidade mágica concedida a mim... \"Teletransporte\".\nEu sou o mago mais rápido do mundo.\nAgora, preciso sobreviver na Academia Stella, um lugar infestado de magos geniais!",
+   "titulosAlternativos": "Gênio do Teletransporte da Academia de Magia | Quick Teleporting Genius from Magic School | Magic Academy's Genius Blinker | I Became a Flashing Genius at the Magic Academy | 마법학교 앞점멸 천재가 되었다 | 魔法学院的闪现天才",
+   "status": "em_lancamento",
+   "oficial": true,
+   "destaque": false,
+   "vip": false,
+   "desativada": false,
+   "viewsTotal": 5439,
+   "viewsSemana": 1276,
+   "ratingMedia": 4.8095,
+   "ratingCount": 63,
+   "comentCount": 40,
+   "dataUltimoCap": "2026-09-09T01:53:14.730Z",
+   "previsaoLancamento": "2026-10-09T00:00:00.000Z",
+   "arte": null,
+   "adaptacao": null,
+   "criadoEm": "2026-09-07T20:42:50.306Z",
+   "formato": {
+    "id": 2,
+    "nome": "Manhwa",
+    "slug": "manhwa"
+   },
+   "autor": {
+    "id": 1,
+    "nome": "Eunmilhi",
+    "slug": null
+   },
+   "studio": {
+    "id": 3,
+    "nome": "Kenaz",
+    "slug": null
+   },
+   "_count": {
+    "capitulos": 51
+   },
+   "tags": [
+    {
+     "id": 1,
+     "nome": "Ação",
+     "slug": "acao"
+    },
+    {
+     "id": 2,
+     "nome": "Aventura",
+     "slug": "aventura"
+    },
+    {
+     "id": 6,
+     "nome": "Fantasia",
+     "slug": "fantasia"
+    },
+    {
+     "id": 14,
+     "nome": "Escolar",
+     "slug": "escolar"
+    },
+    {
+     "id": 39,
+     "nome": "Sistema de Jogo",
+     "slug": "sistema-de-jogo"
+    },
+    {
+     "id": 41,
+     "nome": "Magia",
+     "slug": "magia"
+    }
+   ]
+  },
+  {
+   "id": 32,
+   "nome": "Logando no Murim",
+   "slug": "logando-no-murim",
+   "imagem": "obras/62d3161affeb1d06.jpg",
+   "logo": "obras/logos/aef3623d1b253b53.png",
+   "descricao": "Uma era em que caçadores vivem no maior luxo abatendo monstros dentro dos Portais — as fendas para outro mundo. O protagonista, Jin Taekyung, é um caçador de rank baixo que mal consegue pagar as contas no fim do mês.\nCerto dia, ele encontra um antigo dispositivo de RV e, ao se conectar, o lendário mundo das artes marciais de Murim se abre diante dos seus olhos. Depois de passar por poucas e boas, Taekyung consegue voltar para a realidade, apenas para descobrir que todo o poder que conquistou em Murim veio junto com ele para o mundo real!\nAgora, tudo o que resta a fazer é subir de rank como caçador e encher os bolsos de grana... mas, incapaz de esquecer os NPCs do jogo — não, os seus companheiros —, ele decide se conectar a Murim mais uma vez!",
+   "titulosAlternativos": "Murim Login | Log-in Murim | Logado no Mundo Murim | 로그인 무림 | 登录武林系统",
+   "status": "em_lancamento",
+   "oficial": true,
+   "destaque": false,
+   "vip": true,
+   "desativada": false,
+   "viewsTotal": 3836,
+   "viewsSemana": 671,
+   "ratingMedia": 4.5833,
+   "ratingCount": 24,
+   "comentCount": 46,
+   "dataUltimoCap": "2026-09-09T01:51:00.477Z",
+   "previsaoLancamento": null,
+   "arte": null,
+   "adaptacao": null,
+   "criadoEm": "2026-09-09T01:36:25.807Z",
+   "formato": {
+    "id": 2,
+    "nome": "Manhwa",
+    "slug": "manhwa"
+   },
+   "autor": null,
+   "studio": {
+    "id": 3,
+    "nome": "Kenaz",
+    "slug": null
+   },
+   "_count": {
+    "capitulos": 105
+   },
+   "tags": [
+    {
+     "id": 1,
+     "nome": "Ação",
+     "slug": "acao"
+    },
+    {
+     "id": 2,
+     "nome": "Aventura",
+     "slug": "aventura"
+    },
+    {
+     "id": 6,
+     "nome": "Fantasia",
+     "slug": "fantasia"
+    },
+    {
+     "id": 7,
+     "nome": "Ficção Científica",
+     "slug": "ficcao-cientifica"
+    },
+    {
+     "id": 17,
+     "nome": "Isekai",
+     "slug": "isekai"
+    },
+    {
+     "id": 21,
+     "nome": "Seinen",
+     "slug": "seinen"
+    },
+    {
+     "id": 25,
+     "nome": "Artes Marciais",
+     "slug": "artes-marciais"
+    },
+    {
+     "id": 35,
+     "nome": "Mature",
+     "slug": "mature"
+    },
+    {
+     "id": 37,
+     "nome": "Murim",
+     "slug": "murim"
+    },
+    {
+     "id": 38,
+     "nome": "Cultivo",
+     "slug": "cultivo"
+    },
+    {
+     "id": 39,
+     "nome": "Sistema de Jogo",
+     "slug": "sistema-de-jogo"
+    }
+   ]
+  }
+ ],
+ "total": 18,
+ "page": 1,
+ "limit": 2,
+ "pages": 9
+}
