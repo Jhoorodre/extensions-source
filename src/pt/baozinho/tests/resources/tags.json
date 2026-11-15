@@ -1,0 +1,314 @@
+[
+ {
+  "id": 1,
+  "nome": "Ação",
+  "slug": "acao",
+  "obrasCount": 16
+ },
+ {
+  "id": 50,
+  "nome": "Ambientação Chinesa",
+  "slug": "ambientacao-chinesa",
+  "obrasCount": 2
+ },
+ {
+  "id": 51,
+  "nome": "Ambientação Europeia",
+  "slug": "ambientacao-europeia",
+  "obrasCount": 1
+ },
+ {
+  "id": 27,
+  "nome": "Apocalipse",
+  "slug": "apocalipse",
+  "obrasCount": 1
+ },
+ {
+  "id": 25,
+  "nome": "Artes Marciais",
+  "slug": "artes-marciais",
+  "obrasCount": 5
+ },
+ {
+  "id": 2,
+  "nome": "Aventura",
+  "slug": "aventura",
+  "obrasCount": 6
+ },
+ {
+  "id": 52,
+  "nome": "Baseado em Novel",
+  "slug": "baseado-em-novel",
+  "obrasCount": 1
+ },
+ {
+  "id": 3,
+  "nome": "Comédia",
+  "slug": "comedia",
+  "obrasCount": 4
+ },
+ {
+  "id": 40,
+  "nome": "Construção de Reino",
+  "slug": "construcao-de-reino",
+  "obrasCount": 1
+ },
+ {
+  "id": 38,
+  "nome": "Cultivo",
+  "slug": "cultivo",
+  "obrasCount": 3
+ },
+ {
+  "id": 46,
+  "nome": "Dragões",
+  "slug": "dragoes",
+  "obrasCount": 1
+ },
+ {
+  "id": 4,
+  "nome": "Drama",
+  "slug": "drama",
+  "obrasCount": 5
+ },
+ {
+  "id": 14,
+  "nome": "Escolar",
+  "slug": "escolar",
+  "obrasCount": 2
+ },
+ {
+  "id": 13,
+  "nome": "Esporte",
+  "slug": "esporte",
+  "obrasCount": 0
+ },
+ {
+  "id": 6,
+  "nome": "Fantasia",
+  "slug": "fantasia",
+  "obrasCount": 18
+ },
+ {
+  "id": 34,
+  "nome": "Fase 2 Teste",
+  "slug": "fase-2-teste",
+  "obrasCount": 0
+ },
+ {
+  "id": 7,
+  "nome": "Ficção Científica",
+  "slug": "ficcao-cientifica",
+  "obrasCount": 4
+ },
+ {
+  "id": 33,
+  "nome": "Guia Pós Anime",
+  "slug": "guia-pos-anime",
+  "obrasCount": 0
+ },
+ {
+  "id": 18,
+  "nome": "Harem",
+  "slug": "harem",
+  "obrasCount": 4
+ },
+ {
+  "id": 15,
+  "nome": "Histórico",
+  "slug": "historico",
+  "obrasCount": 2
+ },
+ {
+  "id": 8,
+  "nome": "Horror",
+  "slug": "horror",
+  "obrasCount": 0
+ },
+ {
+  "id": 17,
+  "nome": "Isekai",
+  "slug": "isekai",
+  "obrasCount": 3
+ },
+ {
+  "id": 22,
+  "nome": "Josei",
+  "slug": "josei",
+  "obrasCount": 0
+ },
+ {
+  "id": 41,
+  "nome": "Magia",
+  "slug": "magia",
+  "obrasCount": 3
+ },
+ {
+  "id": 35,
+  "nome": "Mature",
+  "slug": "mature",
+  "obrasCount": 1
+ },
+ {
+  "id": 16,
+  "nome": "Mecha",
+  "slug": "mecha",
+  "obrasCount": 0
+ },
+ {
+  "id": 9,
+  "nome": "Mistério",
+  "slug": "misterio",
+  "obrasCount": 0
+ },
+ {
+  "id": 37,
+  "nome": "Murim",
+  "slug": "murim",
+  "obrasCount": 3
+ },
+ {
+  "id": 36,
+  "nome": "Noblesse",
+  "slug": "noblesse",
+  "obrasCount": 0
+ },
+ {
+  "id": 42,
+  "nome": "Nobreza",
+  "slug": "nobreza",
+  "obrasCount": 4
+ },
+ {
+  "id": 11,
+  "nome": "Psicológico",
+  "slug": "psicologico",
+  "obrasCount": 0
+ },
+ {
+  "id": 32,
+  "nome": "Recomendação de Manhwa",
+  "slug": "recomendacao-de-manhwa",
+  "obrasCount": 0
+ },
+ {
+  "id": 28,
+  "nome": "Reencarnação",
+  "slug": "reencarnacao",
+  "obrasCount": 7
+ },
+ {
+  "id": 5,
+  "nome": "Romance",
+  "slug": "romance",
+  "obrasCount": 2
+ },
+ {
+  "id": 21,
+  "nome": "Seinen",
+  "slug": "seinen",
+  "obrasCount": 2
+ },
+ {
+  "id": 20,
+  "nome": "Shojo",
+  "slug": "shojo",
+  "obrasCount": 0
+ },
+ {
+  "id": 19,
+  "nome": "Shonen",
+  "slug": "shonen",
+  "obrasCount": 0
+ },
+ {
+  "id": 29,
+  "nome": "Shoujo",
+  "slug": "shoujo",
+  "obrasCount": 0
+ },
+ {
+  "id": 30,
+  "nome": "Shounen",
+  "slug": "shounen",
+  "obrasCount": 0
+ },
+ {
+  "id": 39,
+  "nome": "Sistema de Jogo",
+  "slug": "sistema-de-jogo",
+  "obrasCount": 3
+ },
+ {
+  "id": 12,
+  "nome": "Slice of Life",
+  "slug": "slice-of-life",
+  "obrasCount": 0
+ },
+ {
+  "id": 10,
+  "nome": "Sobrenatural",
+  "slug": "sobrenatural",
+  "obrasCount": 2
+ },
+ {
+  "id": 47,
+  "nome": "Sobrevivência",
+  "slug": "sobrevivencia",
+  "obrasCount": 1
+ },
+ {
+  "id": 26,
+  "nome": "Super-herói",
+  "slug": "super-heroi",
+  "obrasCount": 0
+ },
+ {
+  "id": 45,
+  "nome": "Tragédia",
+  "slug": "tragedia",
+  "obrasCount": 1
+ },
+ {
+  "id": 44,
+  "nome": "Traição",
+  "slug": "traicao",
+  "obrasCount": 1
+ },
+ {
+  "id": 31,
+  "nome": "Vida escolar",
+  "slug": "vida-escolar",
+  "obrasCount": 0
+ },
+ {
+  "id": 48,
+  "nome": "Vilã",
+  "slug": "vila",
+  "obrasCount": 1
+ },
+ {
+  "id": 43,
+  "nome": "Vingança",
+  "slug": "vinganca",
+  "obrasCount": 4
+ },
+ {
+  "id": 49,
+  "nome": "Volta no Tempo",
+  "slug": "volta-no-tempo",
+  "obrasCount": 2
+ },
+ {
+  "id": 23,
+  "nome": "Yaoi",
+  "slug": "yaoi",
+  "obrasCount": 0
+ },
+ {
+  "id": 24,
+  "nome": "Yuri",
+  "slug": "yuri",
+  "obrasCount": 0
+ }
+]

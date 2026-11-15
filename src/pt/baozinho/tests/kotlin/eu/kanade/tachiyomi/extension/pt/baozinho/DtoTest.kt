@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.extension.pt.baozinho
 
+import eu.kanade.tachiyomi.source.model.SManga
 import keiyoushi.utils.parseAs
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -83,5 +84,72 @@ class DtoTest {
     @Test
     fun `capitulo pago sem paginas vira lista vazia`() {
         assertTrue(fixture("capitulo_pago.json").parseAs<CapituloPaginasDto>().toPages().isEmpty())
+    }
+
+    private val api = "https://api.baozinho.com"
+
+    @Test
+    fun `url da listagem padrao nao manda filtros vazios`() {
+        val url = obrasUrl(api, page = 1, orderBy = "populares_total")
+
+        assertEquals("$api/obras?page=1&orderBy=populares_total", url.toString())
+    }
+
+    @Test
+    fun `url combina busca e filtros`() {
+        val url = obrasUrl(api, page = 2, orderBy = "rating", query = "murim", status = "em_lancamento", formato = "manhwa", tagIds = listOf(1))
+
+        assertEquals("murim", url.queryParameter("q"))
+        assertEquals("2", url.queryParameter("page"))
+        assertEquals("rating", url.queryParameter("orderBy"))
+        assertEquals("em_lancamento", url.queryParameter("status"))
+        assertEquals("manhwa", url.queryParameter("formatoSlug"))
+        assertEquals(listOf("1"), url.queryParameterValues("tagIds"))
+    }
+
+    @Test
+    fun `varias tags viram parametros repetidos e nunca lista com virgula`() {
+        val url = obrasUrl(api, page = 1, orderBy = "populares_total", tagIds = listOf(1, 28))
+
+        // A API responde 500 para tagIds=1,28; só o formato repetido funciona (e combina por OU).
+        assertEquals(listOf("1", "28"), url.queryParameterValues("tagIds"))
+        assertFalse(url.toString().contains("%2C") || url.toString().contains(","))
+    }
+
+    @Test
+    fun `busca em branco nao manda q`() {
+        assertEquals(null, obrasUrl(api, page = 1, orderBy = "populares_total", query = "   ").queryParameter("q"))
+    }
+
+    @Test
+    fun `status da API vira status do Mihon`() {
+        assertEquals(SManga.ONGOING, statusDe("em_lancamento"))
+        assertEquals(SManga.COMPLETED, statusDe("finalizado"))
+        assertEquals(SManga.ON_HIATUS, statusDe("hiato"))
+        assertEquals(SManga.CANCELLED, statusDe("cancelado"))
+        assertEquals(SManga.UNKNOWN, statusDe(null))
+    }
+
+    @Test
+    fun `ocultar pagos remove so os bloqueados`() {
+        val chapters = fixture("capitulos.json").parseAs<List<CapituloDto>>()
+
+        assertEquals(listOf("🔒 Capítulo 41", "Capítulo 3"), chapters.visiveis(ocultarPagos = false).map { it.nomeExibido })
+        assertEquals(listOf("Capítulo 3"), chapters.visiveis(ocultarPagos = true).map { it.nomeExibido })
+    }
+
+    @Test
+    fun `filtros descartam tags sem obras e mantem os formatos`() {
+        val filtros = FiltrosDto(
+            tags = fixture("tags.json").parseAs(),
+            formatos = fixture("formatos.json").parseAs(),
+        )
+
+        val tags = filtros.tagsComObras()
+
+        assertEquals(33, tags.size)
+        assertTrue(tags.none { it.obrasCount == 0 })
+        assertTrue(tags.any { it.nome == "Ação" && it.id == 1 })
+        assertEquals(7, filtros.formatos.size)
     }
 }

@@ -1,0 +1,37 @@
+[
+ {
+  "id": 6,
+  "nome": "Comic",
+  "slug": "comic"
+ },
+ {
+  "id": 1,
+  "nome": "Mangá",
+  "slug": "manga"
+ },
+ {
+  "id": 3,
+  "nome": "Manhua",
+  "slug": "manhua"
+ },
+ {
+  "id": 2,
+  "nome": "Manhwa",
+  "slug": "manhwa"
+ },
+ {
+  "id": 4,
+  "nome": "Novel",
+  "slug": "novel"
+ },
+ {
+  "id": 7,
+  "nome": "Shoujo",
+  "slug": "shoujo"
+ },
+ {
+  "id": 5,
+  "nome": "Webtoon",
+  "slug": "webtoon"
+ }
+]

@@ -10,9 +10,48 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import kotlin.time.Instant
 
 private const val CDN_URL = "https://cdn.baozinho.com"
+
+// tagIds repetido combina por OU; separado por vírgula a API responde 500.
+fun obrasUrl(
+    apiUrl: String,
+    page: Int,
+    orderBy: String,
+    query: String = "",
+    status: String = "",
+    formato: String = "",
+    tagIds: List<Int> = emptyList(),
+): HttpUrl = "$apiUrl/obras".toHttpUrl().newBuilder().apply {
+    addQueryParameter("page", page.toString())
+    addQueryParameter("orderBy", orderBy)
+    query.trim().takeIf { it.isNotEmpty() }?.let { addQueryParameter("q", it) }
+    status.takeIf { it.isNotEmpty() }?.let { addQueryParameter("status", it) }
+    formato.takeIf { it.isNotEmpty() }?.let { addQueryParameter("formatoSlug", it) }
+    tagIds.forEach { addQueryParameter("tagIds", it.toString()) }
+}.build()
+
+fun statusDe(situacao: String?) = when (situacao) {
+    "em_lancamento" -> SManga.ONGOING
+    "finalizado" -> SManga.COMPLETED
+    "hiato" -> SManga.ON_HIATUS
+    "cancelado" -> SManga.CANCELLED
+    else -> SManga.UNKNOWN
+}
+
+@Serializable
+class TagDto(val id: Int, val nome: String, val obrasCount: Int = 0)
+
+@Serializable
+class FormatoDto(val nome: String, val slug: String)
+
+@Serializable
+class FiltrosDto(val tags: List<TagDto>, val formatos: List<FormatoDto>) {
+    fun tagsComObras() = tags.filter { it.obrasCount > 0 }
+}
 
 @Serializable
 class NomeDto(val nome: String)
@@ -58,10 +97,7 @@ class ObraDto(
         artist = arte
         description = descricaoMarkdown()
         genre = generos()
-        status = when (situacao) {
-            "em_lancamento" -> SManga.ONGOING
-            else -> SManga.UNKNOWN
-        }
+        status = statusDe(situacao)
     }
 }
 
@@ -73,7 +109,9 @@ class CapituloDto(
     private val lancadoEm: String? = null,
     private val gratuito: Boolean = false,
 ) {
-    val nomeExibido get() = if (gratuito) nome else "🔒 $nome"
+    val bloqueado get() = !gratuito
+
+    val nomeExibido get() = if (bloqueado) "🔒 $nome" else nome
 
     val dataUpload get() = Instant.tryParse(lancadoEm)
 
@@ -87,6 +125,8 @@ class CapituloDto(
         memo = buildJsonObject { put("id", id.toString()) }
     }
 }
+
+fun List<CapituloDto>.visiveis(ocultarPagos: Boolean) = if (ocultarPagos) filterNot { it.bloqueado } else this
 
 @Serializable
 class CapituloPaginasDto(
