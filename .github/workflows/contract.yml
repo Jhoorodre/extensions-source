@@ -1,0 +1,25 @@
+name: API contract
+
+# Separado do CI de push: uma oscilação do site não pode travar uma publicação.
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  contract:
+    name: Contract tests against the live API
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/nox
+
+      - name: Run contract tests
+        working-directory: .github/nox
+        run: python3 -m unittest -v contract_test
