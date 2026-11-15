@@ -85,7 +85,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: .github/nox
+          sparse-checkout: |
+            .github/nox
+            src/pt/baozinho/res
           path: main
 
       - name: Checkout repo branch
@@ -104,7 +106,7 @@ jobs:
         env:
           SHA: ${{ github.sha }}
         run: |
-          python3 main/.github/nox/publish.py artifacts repo
+          python3 main/.github/nox/publish.py artifacts repo main/src/pt/baozinho/res/mipmap-xxxhdpi/ic_launcher.png
           cd repo
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

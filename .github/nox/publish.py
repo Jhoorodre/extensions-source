@@ -1,6 +1,6 @@
 """Atualiza um repositório de extensões no formato legado do Mihon (repo.json + index.min.json + apk/).
 
-Uso: publish.py <pasta com o APK e o keiyoushi-source-info.json> <pasta do repositório publicado>
+Uso: publish.py <pasta com o APK e o keiyoushi-source-info.json> <pasta do repositório publicado> [ícone.png]
 """
 import json
 import os
@@ -52,7 +52,7 @@ def merge_index(existing, entry):
     return sorted([e for e in existing if e["pkg"] != entry["pkg"]] + [entry], key=lambda e: e["pkg"])
 
 
-def main(artifacts, out):
+def main(artifacts, out, icon=None):
     info = json.loads(next(artifacts.glob("**/keiyoushi-source-info.json")).read_text(encoding="utf-8"))
     apk = next(artifacts.glob("**/*.apk"))
     fingerprint = parse_fingerprint(
@@ -65,6 +65,9 @@ def main(artifacts, out):
     for old in apk_dir.glob(f"tachiyomi-{module}-*.apk"):
         old.unlink()
     (apk_dir / apk.name).write_bytes(apk.read_bytes())
+    if icon:
+        (out / "icon").mkdir(exist_ok=True)
+        (out / "icon" / f"{info['packageName']}.png").write_bytes(icon.read_bytes())
 
     index_file = out / "index.min.json"
     existing = json.loads(index_file.read_text(encoding="utf-8")) if index_file.exists() else []
@@ -76,4 +79,4 @@ def main(artifacts, out):
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]), Path(sys.argv[2]))
+    main(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]) if len(sys.argv) > 3 else None)
