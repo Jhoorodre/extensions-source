@@ -114,3 +114,60 @@ jobs:
           git diff --cached --quiet && { echo "nada mudou"; exit 0; }
           git commit -q -m "Update extensions repo (${SHA::7})"
           git push origin repo
+
+  mirror:
+    name: Mirror to private repo
+    if: github.event_name == 'push' && github.ref == 'refs/heads/nox'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    concurrency:
+      group: mirror
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github
+            common
+            compiler
+            core
+            gradle
+            lib
+            lib-multisrc
+            src/pt/baozinho
+          path: src
+
+      # Snapshot do código na branch nox do repositório privado (sem os workflows, que ficam só no fork).
+      - name: Mirror
+        env:
+          DEPLOY_KEY: ${{ secrets.MIRROR_DEPLOY_KEY }}
+          SHA: ${{ github.sha }}
+          TARGET: git@github.com:Jhoorodre/nox-extensions-private.git
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/mirror_key
+          chmod 600 ~/.ssh/mirror_key
+          curl -fsS https://api.github.com/meta | python3 -c "import json,sys; print(*('github.com ' + k for k in json.load(sys.stdin)['ssh_keys']), sep='\n')" > ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/mirror_key -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=yes"
+          subject=$(git -C src log -1 --format=%s)
+          git clone -q "$TARGET" mirror
+          cd mirror
+          if git ls-remote --exit-code --heads origin nox > /dev/null; then
+            git fetch -q origin nox
+            git checkout -q -B nox origin/nox
+          else
+            git checkout -q --orphan nox
+            git rm -rfq . 2> /dev/null || true
+          fi
+          rsync -a --delete --exclude .git --exclude .github/workflows ../src/ ./
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "nada mudou"; exit 0; }
+          git commit -q -m "Mirror ${SHA::7}: ${subject}"
+          git push origin HEAD:nox
