@@ -1,7 +1,9 @@
 package eu.kanade.tachiyomi.extension.pt.baozinho
 
 import android.content.Context
+import android.text.InputType
 import android.widget.Toast
+import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
@@ -19,6 +21,7 @@ import keiyoushi.network.Fetch
 import keiyoushi.network.get
 import keiyoushi.network.post
 import keiyoushi.source.KeiSource
+import keiyoushi.utils.WebViewTimeoutException
 import keiyoushi.utils.firstInstanceOrNull
 import keiyoushi.utils.getLocalStorage
 import keiyoushi.utils.getPreferencesLazy
@@ -40,9 +43,16 @@ import kotlinx.serialization.json.JsonElement
 import okhttp3.CacheControl
 import okhttp3.HttpUrl
 import java.io.IOException
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 private class SessaoRejeitadaException : IOException("sessão rejeitada pelo site")
+
+private class CredenciaisAusentesException : IOException("e-mail ou senha não preenchidos")
+
+private class CredenciaisRecusadasException : IOException("e-mail ou senha recusados pelo site")
+
+private class VerificacaoFalhouException : IOException("não foi possível passar a verificação do site")
 
 @Source
 abstract class Baozinho :
@@ -60,6 +70,8 @@ abstract class Baozinho :
     private var accessToken: String? = null
     private var accessExpiresAt = 0L
     private val hasSession get() = preferences.getString(REFRESH_KEY, null) != null
+    private val temCredenciais get() = !preferences.getString(EMAIL_KEY, null).isNullOrBlank() && !preferences.getString(PASSWORD_KEY, null).isNullOrEmpty()
+    private var jaTentouLoginAutomatico = false
     private val uiScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun getMangaUrl(manga: SManga) = "$baseUrl/obras/${manga.url}"
@@ -141,7 +153,7 @@ abstract class Baozinho :
 
     // null = logado mas não deu para saber; sem sessão não há nada liberado.
     private suspend fun fetchDesbloqueados(obraId: Int): Set<Int>? {
-        if (!hasSession) return emptySet()
+        if (!hasSession && !temCredenciais) return emptySet()
         return try {
             getJsonComSessao<List<DesbloqueadoDto>>("$apiUrl/capitulos/obra/$obraId/desbloqueados", Fetch.XHR).map { it.capId }.toSet()
         } catch (e: CancellationException) {
@@ -173,13 +185,58 @@ abstract class Baozinho :
 
     private suspend fun tokenDeAcesso(forcar: Boolean = false): String? = authLock.withLock {
         if (!forcar && System.currentTimeMillis() < accessExpiresAt) return@withLock accessToken
-        val refresh = preferences.getString(REFRESH_KEY, null) ?: return@withLock null
-        try {
-            salvarSessao(renovar(refresh)).accessToken
-        } catch (_: SessaoRejeitadaException) {
-            encerrarSessao()
+        val renovado = preferences.getString(REFRESH_KEY, null)?.let {
+            try {
+                salvarSessao(renovar(it)).accessToken
+            } catch (_: SessaoRejeitadaException) {
+                encerrarSessao()
+                null
+            }
+        }
+        renovado ?: loginAutomatico()
+    }
+
+    // Sem sessão (ou sessão recusada), usa o e-mail e a senha salvos; no máximo uma vez por abertura do app. Roda dentro do authLock.
+    private suspend fun loginAutomatico(): String? {
+        if (!deveLogarSozinho(temCredenciais, jaTentouLoginAutomatico)) return null
+        jaTentouLoginAutomatico = true
+        return try {
+            loginComCredenciais().accessToken
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
             null
         }
+    }
+
+    // O login do site exige um token do Cloudflare Turnstile; o widget do próprio site roda num WebView do aparelho.
+    private suspend fun loginComCredenciais(): TokensDto {
+        val email = preferences.getString(EMAIL_KEY, null).orEmpty().trim()
+        val senha = preferences.getString(PASSWORD_KEY, null).orEmpty()
+        if (email.isEmpty() || senha.isEmpty()) throw CredenciaisAusentesException()
+        val turnstile = obterTokenTurnstile()
+        val response = client.post("$apiUrl/auth/login", Fetch.XHR, LoginRequest(email, senha, turnstile).toJsonRequestBody(), ensureSuccess = false)
+        if (response.isSuccessful) return salvarSessao(response.parseAs<TokensDto>())
+        val code = response.code
+        val corpo = response.use { it.body.string() }
+        throw when (classificarFalhaLogin(code, corpo)) {
+            FalhaLogin.CREDENCIAIS -> CredenciaisRecusadasException()
+            FalhaLogin.VERIFICACAO -> VerificacaoFalhouException()
+            FalhaLogin.OUTRA -> IOException("HTTP $code ao entrar")
+        }
+    }
+
+    private suspend fun obterTokenTurnstile(): String = try {
+        runWebView<String>(timeout = 30.seconds) {
+            poll(500.milliseconds) {
+                evaluateJs("window.__tk || ''") { valor ->
+                    valor.parseAs<String?>()?.takeIf { it.isNotEmpty() }?.let { resolve(it) }
+                }
+            }
+            loadData(baseUrl, turnstileHtml(TURNSTILE_SITE_KEY))
+        }
+    } catch (_: WebViewTimeoutException) {
+        throw VerificacaoFalhouException()
     }
 
     private suspend fun renovar(refreshToken: String): TokensDto {
@@ -219,10 +276,11 @@ abstract class Baozinho :
             key = SESSION_ACTION_KEY
             title = "Sessão do site"
             summary = statusSessao()
-            entries = arrayOf("Importar sessão do site", "Sair (apagar a sessão guardada)")
-            entryValues = arrayOf(ACTION_IMPORT, ACTION_LOGOUT)
+            entries = arrayOf("Entrar com e-mail e senha", "Importar sessão do site", "Sair (apagar a sessão guardada)")
+            entryValues = arrayOf(ACTION_LOGIN, ACTION_IMPORT, ACTION_LOGOUT)
             setOnPreferenceChangeListener { pref, action ->
                 when (action) {
+                    ACTION_LOGIN -> entrarComCredenciais(context, pref)
                     ACTION_IMPORT -> importarSessao(context, pref)
                     ACTION_LOGOUT -> {
                         encerrarSessao()
@@ -234,13 +292,69 @@ abstract class Baozinho :
             }
         }
 
-        listOf(hidePaidPref, sessionPref).forEach(screen::addPreference)
+        val emailPref = EditTextPreference(context).apply {
+            key = EMAIL_KEY
+            title = "E-mail"
+            summary = preferences.getString(EMAIL_KEY, null)?.takeIf { it.isNotBlank() } ?: "Não definido"
+            setOnBindEditTextListener { it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS }
+            setOnPreferenceChangeListener { pref, valor ->
+                pref.summary = (valor as String).takeIf { it.isNotBlank() } ?: "Não definido"
+                sessionPref.summary = statusSessao()
+                true
+            }
+        }
+
+        // Ao salvar a senha com o e-mail já preenchido, tenta entrar na hora; o valor novo já está gravado quando a coroutine roda.
+        val passwordPref = EditTextPreference(context).apply {
+            key = PASSWORD_KEY
+            title = "Senha"
+            summary = resumoSenha(preferences.getString(PASSWORD_KEY, null).orEmpty())
+            setOnBindEditTextListener { it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
+            setOnPreferenceChangeListener { pref, valor ->
+                pref.summary = resumoSenha(valor as String)
+                if (valor.isNotEmpty() && !preferences.getString(EMAIL_KEY, null).isNullOrBlank()) {
+                    entrarComCredenciais(context, sessionPref)
+                }
+                true
+            }
+        }
+
+        listOf(hidePaidPref, emailPref, passwordPref, sessionPref).forEach(screen::addPreference)
     }
 
-    private fun statusSessao() = if (hasSession) {
-        "Conectado. Toque para importar outra sessão ou sair."
-    } else {
-        "Não conectado. 1) Na tela da fonte, abra o WebView (ícone de globo) e entre no site. 2) Feche o WebView. 3) Toque aqui e escolha Importar."
+    private fun statusSessao() = when {
+        hasSession -> "Conectado. Toque para entrar de novo, importar outra sessão ou sair."
+        temCredenciais -> "Não conectado. Toque e escolha Entrar com e-mail e senha."
+        else -> "Não conectado. Preencha o e-mail e a senha acima. (Alternativa: entre no site pelo WebView, feche-o e escolha Importar sessão.)"
+    }
+
+    private fun entrarComCredenciais(context: Context, pref: Preference) {
+        uiScope.launch {
+            toast(context, "Entrando…")
+            val mensagem = try {
+                val tokens = authLock.withLock { loginComCredenciais() }
+                "Conectado${nomeDaConta(tokens.accessToken)?.let { " como $it" }.orEmpty()}."
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: CredenciaisAusentesException) {
+                "Preencha o e-mail e a senha primeiro."
+            } catch (_: CredenciaisRecusadasException) {
+                "O site recusou o e-mail ou a senha."
+            } catch (_: VerificacaoFalhouException) {
+                "Não consegui passar a verificação do site. Use Importar sessão do site."
+            } catch (e: Exception) {
+                "Falha ao entrar (${e.javaClass.simpleName}). Verifique a conexão e tente de novo."
+            }
+            pref.summary = statusSessao()
+            toast(context, mensagem)
+        }
+    }
+
+    private suspend fun nomeDaConta(accessToken: String): String? = try {
+        val cabecalhos = headers.newBuilder().set("Authorization", "Bearer $accessToken").build()
+        client.get("$apiUrl/auth/me", cabecalhos, Fetch.XHR, CacheControl.FORCE_NETWORK).parseAs<UsuarioDto>().nome
+    } catch (_: IOException) {
+        null
     }
 
     // Ordem: ler R1 do WebView, renovar com R1, guardar R2 e só então apagar a cópia do WebView, para o site não reusar R1.
@@ -254,13 +368,7 @@ abstract class Baozinho :
                 } else {
                     val tokens = authLock.withLock { salvarSessao(renovar(r1)) }
                     limparSessaoDoWebView()
-                    val nome = try {
-                        val cabecalhos = headers.newBuilder().set("Authorization", "Bearer ${tokens.accessToken}").build()
-                        client.get("$apiUrl/auth/me", cabecalhos, Fetch.XHR, CacheControl.FORCE_NETWORK).parseAs<UsuarioDto>().nome
-                    } catch (_: IOException) {
-                        null
-                    }
-                    "Conectado${nome?.let { " como $it" }.orEmpty()}."
+                    "Conectado${nomeDaConta(tokens.accessToken)?.let { " como $it" }.orEmpty()}."
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -291,11 +399,17 @@ abstract class Baozinho :
         const val POPULAR = "populares_total"
         const val HIDE_PAID_KEY = "hide_paid_chapters"
         const val REFRESH_KEY = "session_refresh_token"
+        const val EMAIL_KEY = "login_email"
+        const val PASSWORD_KEY = "login_password"
         const val SESSION_ACTION_KEY = "session_action"
+        const val ACTION_LOGIN = "login"
         const val ACTION_IMPORT = "import"
         const val ACTION_LOGOUT = "logout"
         const val SITE_ACCESS_KEY = "bz_access"
         const val SITE_REFRESH_KEY = "bz_refresh"
         const val ACCESS_TTL_MS = 10 * 60 * 1000L
+
+        // Chave pública do widget Turnstile do site (aparece no JS da página de login).
+        const val TURNSTILE_SITE_KEY = "0x4AAAAAADtmuUfMFzDWFmF8"
     }
 }

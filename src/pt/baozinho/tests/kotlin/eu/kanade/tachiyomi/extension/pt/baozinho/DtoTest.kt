@@ -213,4 +213,44 @@ class DtoTest {
         assertFalse(sessaoRejeitada(502, null))
         assertFalse(sessaoRejeitada(200, null))
     }
+
+    @Test
+    fun `corpo do login leva e-mail, senha e o token do turnstile`() {
+        assertEquals(
+            """{"email":"a@b.c","senha":"s3nha","turnstileToken":"tk"}""",
+            LoginRequest("a@b.c", "s3nha", "tk").toJsonString(),
+        )
+    }
+
+    @Test
+    fun `pagina do turnstile leva a sitekey e expoe o token`() {
+        val html = turnstileHtml("SITEKEY-123")
+
+        assertTrue(html.contains("sitekey: 'SITEKEY-123'"))
+        assertTrue(html.contains("https://challenges.cloudflare.com/turnstile/v0/api.js"))
+        assertTrue(html.contains("window.__tk = t"))
+    }
+
+    @Test
+    fun `falha de login e classificada para o usuario saber o que corrigir`() {
+        assertEquals(FalhaLogin.CREDENCIAIS, classificarFalhaLogin(401, "Credenciais inválidas"))
+        assertEquals(FalhaLogin.CREDENCIAIS, classificarFalhaLogin(400, null))
+        assertEquals(FalhaLogin.VERIFICACAO, classificarFalhaLogin(400, "Falha na verificação do Turnstile"))
+        assertEquals(FalhaLogin.VERIFICACAO, classificarFalhaLogin(403, "captcha inválido"))
+        assertEquals(FalhaLogin.OUTRA, classificarFalhaLogin(500, "Internal server error"))
+        assertEquals(FalhaLogin.OUTRA, classificarFalhaLogin(429, "Too many requests"))
+    }
+
+    @Test
+    fun `login automatico so uma vez por sessao do app e so com credenciais`() {
+        assertTrue(deveLogarSozinho(temCredenciais = true, jaTentou = false))
+        assertFalse(deveLogarSozinho(temCredenciais = true, jaTentou = true))
+        assertFalse(deveLogarSozinho(temCredenciais = false, jaTentou = false))
+    }
+
+    @Test
+    fun `resumo da senha nunca mostra o valor`() {
+        assertEquals("Não definida", resumoSenha(""))
+        assertFalse(resumoSenha("s3nha").contains("s3nha"))
+    }
 }

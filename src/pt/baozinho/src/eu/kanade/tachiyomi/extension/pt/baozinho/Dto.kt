@@ -156,3 +156,38 @@ class UsuarioDto(val nome: String? = null)
 
 // Só uma recusa clara derruba a sessão; rede, 5xx e 429 mantêm o token guardado.
 fun sessaoRejeitada(code: Int, message: String?) = code == 401 || code == 403 || (code == 400 && message?.contains("token", ignoreCase = true) == true)
+
+@Serializable
+class LoginRequest(val email: String, val senha: String, val turnstileToken: String)
+
+enum class FalhaLogin { CREDENCIAIS, VERIFICACAO, OUTRA }
+
+private val verificacaoRegex = Regex("turnstile|captcha|verifica", RegexOption.IGNORE_CASE)
+
+// Para o usuário saber o que corrigir: e-mail/senha, a verificação do site, ou outra coisa (rede, servidor, limite).
+fun classificarFalhaLogin(code: Int, message: String?) = when {
+    code !in 400..403 -> FalhaLogin.OUTRA
+    message?.let(verificacaoRegex::containsMatchIn) == true -> FalhaLogin.VERIFICACAO
+    else -> FalhaLogin.CREDENCIAIS
+}
+
+// Uma tentativa por abertura do app, para uma falha não virar uma sequência de verificações.
+fun deveLogarSozinho(temCredenciais: Boolean, jaTentou: Boolean) = temCredenciais && !jaTentou
+
+fun resumoSenha(senha: String) = if (senha.isEmpty()) "Não definida" else "Definida (••••••••)"
+
+// Página mínima que roda o widget do site no WebView e deixa o token em window.__tk.
+fun turnstileHtml(siteKey: String) = """
+    <!doctype html><html><head><meta charset="utf-8">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+    </head><body><div id="w"></div>
+    <script>
+    window.__tk = '';
+    var iv = setInterval(function () {
+        if (window.turnstile) {
+            clearInterval(iv);
+            turnstile.render('#w', { sitekey: '$siteKey', callback: function (t) { window.__tk = t; } });
+        }
+    }, 100);
+    </script></body></html>
+""".trimIndent()
