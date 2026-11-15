@@ -24,6 +24,7 @@ jobs:
         with:
           persist-credentials: false
           sparse-checkout: |
+            .github/nox
             common
             compiler
             core
@@ -41,12 +42,73 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
+      - name: Test the publisher
+        working-directory: .github/nox
+        run: python3 -m unittest -v test_publish
+
+      # Segredos só existem em push; em pull request o build sai com a chave de debug.
+      - name: Restore signing key
+        if: github.event_name == 'push'
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: echo "$SIGNING_KEY" | base64 -d > signingkey.jks
+
       - name: Test, lint and assemble
+        env:
+          ALIAS: ${{ secrets.ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew :src:pt:baozinho:testDebugUnitTest :src:pt:baozinho:lintRelease :src:pt:baozinho:assembleRelease --console=plain
 
       - name: Upload APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: baozinho-apk
-          path: src/pt/baozinho/build/outputs/apk/release/*.apk
+          path: |
+            src/pt/baozinho/build/keiyoushi-source-info.json
+            src/pt/baozinho/build/outputs/apk/release/*.apk
           retention-days: 30
+
+  publish:
+    name: Publish extension repo
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/nox'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: publish
+      cancel-in-progress: false
+    steps:
+      - name: Checkout publisher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/nox
+          path: main
+
+      - name: Checkout repo branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: repo
+          path: repo
+
+      - name: Download APK
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: baozinho-apk
+          path: artifacts
+
+      - name: Publish
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          python3 main/.github/nox/publish.py artifacts repo
+          cd repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "nada mudou"; exit 0; }
+          git commit -q -m "Update extensions repo (${SHA::7})"
+          git push origin repo
