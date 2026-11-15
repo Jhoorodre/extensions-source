@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.extension.pt.baozinho
 
 import eu.kanade.tachiyomi.source.model.SManga
 import keiyoushi.utils.parseAs
+import keiyoushi.utils.toJsonString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -57,7 +58,7 @@ class DtoTest {
     fun `capitulo pago ganha cadeado e url sem ponto zero`() {
         val chapter = fixture("capitulos.json").parseAs<List<CapituloDto>>()[0]
 
-        assertEquals("🔒 Capítulo 41", chapter.nomeExibido)
+        assertEquals("🔒 Capítulo 41", chapter.nomeExibido())
         assertEquals("$slug/capitulo-41", chapter.path(slug))
         assertTrue("data deve ser lida", chapter.dataUpload > 0)
     }
@@ -66,7 +67,7 @@ class DtoTest {
     fun `capitulo gratis fica sem cadeado`() {
         val chapter = fixture("capitulos.json").parseAs<List<CapituloDto>>()[1]
 
-        assertEquals("Capítulo 3", chapter.nomeExibido)
+        assertEquals("Capítulo 3", chapter.nomeExibido())
         assertEquals("$slug/capitulo-3", chapter.path(slug))
     }
 
@@ -134,8 +135,8 @@ class DtoTest {
     fun `ocultar pagos remove so os bloqueados`() {
         val chapters = fixture("capitulos.json").parseAs<List<CapituloDto>>()
 
-        assertEquals(listOf("🔒 Capítulo 41", "Capítulo 3"), chapters.visiveis(ocultarPagos = false).map { it.nomeExibido })
-        assertEquals(listOf("Capítulo 3"), chapters.visiveis(ocultarPagos = true).map { it.nomeExibido })
+        assertEquals(listOf("🔒 Capítulo 41", "Capítulo 3"), chapters.visiveis(ocultarPagos = false).map { it.nomeExibido() })
+        assertEquals(listOf("Capítulo 3"), chapters.visiveis(ocultarPagos = true).map { it.nomeExibido() })
     }
 
     @Test
@@ -151,5 +152,65 @@ class DtoTest {
         assertTrue(tags.none { it.obrasCount == 0 })
         assertTrue(tags.any { it.nome == "Ação" && it.id == 1 })
         assertEquals(7, filtros.formatos.size)
+    }
+
+    @Test
+    fun `capitulo pago desbloqueado pela conta nao ganha cadeado`() {
+        val pago = fixture("capitulos.json").parseAs<List<CapituloDto>>()[0]
+
+        assertEquals("🔒 Capítulo 41", pago.nomeExibido())
+        assertEquals("Capítulo 41", pago.nomeExibido(desbloqueados = setOf(2043)))
+        assertTrue(pago.bloqueadoPara(setOf(1, 2)))
+        assertFalse(pago.bloqueadoPara(setOf(2043)))
+    }
+
+    @Test
+    fun `ocultar pagos respeita os desbloqueados da conta`() {
+        val chapters = fixture("capitulos.json").parseAs<List<CapituloDto>>()
+
+        assertEquals(2, chapters.visiveis(ocultarPagos = true, desbloqueados = setOf(2043)).size)
+    }
+
+    @Test
+    fun `se nao der para saber os desbloqueados nada e escondido`() {
+        val chapters = fixture("capitulos.json").parseAs<List<CapituloDto>>()
+
+        // Logado mas /desbloqueados falhou: melhor mostrar de mais do que esconder o que a conta tem.
+        assertEquals(2, chapters.visiveis(ocultarPagos = true, desbloqueados = null).size)
+    }
+
+    // desbloqueados.json foi inferido do JS do site (capId, expiraEm), não capturado de uma sessão real.
+    @Test
+    fun `lista de desbloqueados vira conjunto de ids`() {
+        val ids = fixture("desbloqueados.json").parseAs<List<DesbloqueadoDto>>().map { it.capId }.toSet()
+
+        assertEquals(setOf(2043, 9999), ids)
+    }
+
+    @Test
+    fun `tokens e usuario sao lidos ignorando campos extras`() {
+        val tokens = """{"accessToken":"a","refreshToken":"r","user":{"id":1}}""".parseAs<TokensDto>()
+        val usuario = """{"id":7,"nome":"Fulano","email":"x@y.z"}""".parseAs<UsuarioDto>()
+
+        assertEquals("a" to "r", tokens.accessToken to tokens.refreshToken)
+        assertEquals("Fulano", usuario.nome)
+    }
+
+    @Test
+    fun `corpo do refresh so leva o refreshToken`() {
+        assertEquals("""{"refreshToken":"tok"}""", RefreshRequest("tok").toJsonString())
+    }
+
+    @Test
+    fun `so rejeicao clara de autenticacao derruba a sessao`() {
+        assertTrue(sessaoRejeitada(401, null))
+        assertTrue(sessaoRejeitada(403, "Forbidden"))
+        assertTrue(sessaoRejeitada(400, "Refresh token inválido"))
+        // Queda de rede, erro do servidor e limite de requisições não podem deslogar o usuário.
+        assertFalse(sessaoRejeitada(400, "property x should not exist"))
+        assertFalse(sessaoRejeitada(429, "Too many requests"))
+        assertFalse(sessaoRejeitada(500, "Internal server error"))
+        assertFalse(sessaoRejeitada(502, null))
+        assertFalse(sessaoRejeitada(200, null))
     }
 }

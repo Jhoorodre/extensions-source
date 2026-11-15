@@ -109,24 +109,25 @@ class CapituloDto(
     private val lancadoEm: String? = null,
     private val gratuito: Boolean = false,
 ) {
-    val bloqueado get() = !gratuito
+    fun bloqueadoPara(desbloqueados: Set<Int>) = !gratuito && id !in desbloqueados
 
-    val nomeExibido get() = if (bloqueado) "🔒 $nome" else nome
+    fun nomeExibido(desbloqueados: Set<Int> = emptySet()) = if (bloqueadoPara(desbloqueados)) "🔒 $nome" else nome
 
     val dataUpload get() = Instant.tryParse(lancadoEm)
 
     fun path(slug: String) = "$slug/capitulo-${numero.toString().removeSuffix(".0")}"
 
-    fun toSChapter(slug: String) = SChapter.create().apply {
+    fun toSChapter(slug: String, desbloqueados: Set<Int> = emptySet()) = SChapter.create().apply {
         url = path(slug)
-        name = nomeExibido
+        name = nomeExibido(desbloqueados)
         chapter_number = numero
         date_upload = dataUpload
         memo = buildJsonObject { put("id", id.toString()) }
     }
 }
 
-fun List<CapituloDto>.visiveis(ocultarPagos: Boolean) = if (ocultarPagos) filterNot { it.bloqueado } else this
+// desbloqueados == null: logado, mas a lista de liberados falhou; melhor mostrar de mais do que esconder o que a conta tem.
+fun List<CapituloDto>.visiveis(ocultarPagos: Boolean, desbloqueados: Set<Int>? = emptySet()) = if (ocultarPagos && desbloqueados != null) filterNot { it.bloqueadoPara(desbloqueados) } else this
 
 @Serializable
 class CapituloPaginasDto(
@@ -140,3 +141,18 @@ class PaginaDto(
     val url: String,
     val ordem: Int,
 )
+
+@Serializable
+class TokensDto(val accessToken: String, val refreshToken: String)
+
+@Serializable
+class RefreshRequest(val refreshToken: String)
+
+@Serializable
+class DesbloqueadoDto(val capId: Int)
+
+@Serializable
+class UsuarioDto(val nome: String? = null)
+
+// Só uma recusa clara derruba a sessão; rede, 5xx e 429 mantêm o token guardado.
+fun sessaoRejeitada(code: Int, message: String?) = code == 401 || code == 403 || (code == 400 && message?.contains("token", ignoreCase = true) == true)
