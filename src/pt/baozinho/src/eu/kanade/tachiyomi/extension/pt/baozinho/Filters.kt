@@ -33,9 +33,9 @@ class StatusFilter :
         ),
     )
 
-class FormatoFilter(formatos: List<FormatoDto>) : SelectFilter("Formato", listOf("Todos" to "") + formatos.map { it.nome to it.slug })
+class FormatFilter(formats: List<FormatDto>) : SelectFilter("Formato", listOf("Todos" to "") + formats.map { it.name to it.slug })
 
-class TagCheckBox(tag: TagDto) : Filter.CheckBox(tag.nome) {
+class TagCheckBox(tag: TagDto) : Filter.CheckBox(tag.name) {
     val id = tag.id
 }
 

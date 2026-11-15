@@ -6,20 +6,21 @@ import keiyoushi.utils.toJsonString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
 import org.junit.Test
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.addSingleton
 
-// Fixtures são respostas reais de api.baozinho.com (tests/resources).
-// SManga/SChapter.create() são stubs na JVM, então só a lógica pura é testada aqui.
+// Fixtures are real responses from api.baozinho.com (tests/resources).
+// SManga/SChapter.create() are stubs on the JVM, so only the pure logic is tested here.
 class DtoTest {
     companion object {
         @JvmStatic
         @BeforeClass
         fun setUp() {
-            // jsonInstance vem do Injekt; no teste da JVM é preciso registrar um.
+            // jsonInstance comes from Injekt; the unit-test JVM needs one registered.
             Injekt.addSingleton(Json { ignoreUnknownKeys = true })
         }
     }
@@ -27,53 +28,54 @@ class DtoTest {
     private fun fixture(name: String) = checkNotNull(javaClass.getResource("/$name")).readText()
 
     private val slug = "o-conceito-da-reencarnacao"
+    private val api = "https://api.baozinho.com"
 
     @Test
-    fun `generos juntam formato e tags`() {
-        val obra = fixture("obra.json").parseAs<ObraDto>()
+    fun `genres join format and tags`() {
+        val work = fixture("obra.json").parseAs<WorkDto>()
 
-        assertEquals("Manhwa, Ação, Fantasia, Reencarnação, Volta no Tempo", obra.generos())
+        assertEquals("Manhwa, Ação, Fantasia, Reencarnação, Volta no Tempo", work.genres())
     }
 
     @Test
-    fun `nomes alternativos aparecem como lista na descricao`() {
-        val description = fixture("obra.json").parseAs<ObraDto>().descricaoMarkdown().orEmpty()
+    fun `alternative titles appear as a list in the description`() {
+        val description = fixture("obra.json").parseAs<WorkDto>().descriptionMarkdown().orEmpty()
 
         assertTrue(description.contains("Nomes alternativos"))
         listOf("Standard of Reincarnation", "Hwansaengui Jeongseok", "O Padrão de Reencarnação").forEach {
-            assertTrue("faltou $it", description.contains(it))
+            assertTrue("missing $it", description.contains(it))
         }
-        assertFalse("o separador | da API não deve vazar", description.contains(" | "))
+        assertFalse("the API's | separator must not leak", description.contains(" | "))
     }
 
     @Test
-    fun `listagem tem proxima pagina quando page menor que pages`() {
-        val page = fixture("obras.json").parseAs<ObrasDto>()
+    fun `listing has next page when page is less than pages`() {
+        val page = fixture("obras.json").parseAs<WorksDto>()
 
         assertEquals(2, page.data.size)
         assertTrue(page.hasNextPage)
     }
 
     @Test
-    fun `capitulo pago ganha cadeado e url sem ponto zero`() {
-        val chapter = fixture("capitulos.json").parseAs<List<CapituloDto>>()[0]
+    fun `paid chapter gets a lock and a url without trailing zero`() {
+        val chapter = fixture("capitulos.json").parseAs<List<ChapterDto>>()[0]
 
-        assertEquals("🔒 Capítulo 41", chapter.nomeExibido())
+        assertEquals("🔒 Capítulo 41", chapter.displayName())
         assertEquals("$slug/capitulo-41", chapter.path(slug))
-        assertTrue("data deve ser lida", chapter.dataUpload > 0)
+        assertTrue("date must be parsed", chapter.uploadDate > 0)
     }
 
     @Test
-    fun `capitulo gratis fica sem cadeado`() {
-        val chapter = fixture("capitulos.json").parseAs<List<CapituloDto>>()[1]
+    fun `free chapter has no lock`() {
+        val chapter = fixture("capitulos.json").parseAs<List<ChapterDto>>()[1]
 
-        assertEquals("Capítulo 3", chapter.nomeExibido())
+        assertEquals("Capítulo 3", chapter.displayName())
         assertEquals("$slug/capitulo-3", chapter.path(slug))
     }
 
     @Test
-    fun `paginas saem ordenadas por ordem`() {
-        val pages = fixture("capitulo_gratis.json").parseAs<CapituloPaginasDto>().toPages()
+    fun `pages come sorted by order`() {
+        val pages = fixture("capitulo_gratis.json").parseAs<ChapterPagesDto>().toPages()
 
         assertEquals(
             listOf("79477ec6dab49534", "ff5530b042484372", "9b7a24538a54a816"),
@@ -83,22 +85,20 @@ class DtoTest {
     }
 
     @Test
-    fun `capitulo pago sem paginas vira lista vazia`() {
-        assertTrue(fixture("capitulo_pago.json").parseAs<CapituloPaginasDto>().toPages().isEmpty())
+    fun `paid chapter without pages becomes an empty list`() {
+        assertTrue(fixture("capitulo_pago.json").parseAs<ChapterPagesDto>().toPages().isEmpty())
     }
 
-    private val api = "https://api.baozinho.com"
-
     @Test
-    fun `url da listagem padrao nao manda filtros vazios`() {
-        val url = obrasUrl(api, page = 1, orderBy = "populares_total")
+    fun `default listing url sends no empty filters`() {
+        val url = worksUrl(api, page = 1, orderBy = "populares_total")
 
         assertEquals("$api/obras?page=1&orderBy=populares_total", url.toString())
     }
 
     @Test
-    fun `url combina busca e filtros`() {
-        val url = obrasUrl(api, page = 2, orderBy = "rating", query = "murim", status = "em_lancamento", formato = "manhwa", tagIds = listOf(1))
+    fun `url combines search and filters`() {
+        val url = worksUrl(api, page = 2, orderBy = "rating", query = "murim", status = "em_lancamento", format = "manhwa", tagIds = listOf(1))
 
         assertEquals("murim", url.queryParameter("q"))
         assertEquals("2", url.queryParameter("page"))
@@ -109,113 +109,131 @@ class DtoTest {
     }
 
     @Test
-    fun `varias tags viram parametros repetidos e nunca lista com virgula`() {
-        val url = obrasUrl(api, page = 1, orderBy = "populares_total", tagIds = listOf(1, 28))
+    fun `several tags become repeated parameters and never a comma list`() {
+        val url = worksUrl(api, page = 1, orderBy = "populares_total", tagIds = listOf(1, 28))
 
-        // A API responde 500 para tagIds=1,28; só o formato repetido funciona (e combina por OU).
+        // The API answers 500 for tagIds=1,28; only the repeated form works (and it combines with OR).
         assertEquals(listOf("1", "28"), url.queryParameterValues("tagIds"))
         assertFalse(url.toString().contains("%2C") || url.toString().contains(","))
     }
 
     @Test
-    fun `busca em branco nao manda q`() {
-        assertEquals(null, obrasUrl(api, page = 1, orderBy = "populares_total", query = "   ").queryParameter("q"))
+    fun `blank query sends no q`() {
+        assertNull(worksUrl(api, page = 1, orderBy = "populares_total", query = "   ").queryParameter("q"))
     }
 
     @Test
-    fun `status da API vira status do Mihon`() {
-        assertEquals(SManga.ONGOING, statusDe("em_lancamento"))
-        assertEquals(SManga.COMPLETED, statusDe("finalizado"))
-        assertEquals(SManga.ON_HIATUS, statusDe("hiato"))
-        assertEquals(SManga.CANCELLED, statusDe("cancelado"))
-        assertEquals(SManga.UNKNOWN, statusDe(null))
+    fun `API status maps to Mihon status`() {
+        assertEquals(SManga.ONGOING, parseStatus("em_lancamento"))
+        assertEquals(SManga.COMPLETED, parseStatus("finalizado"))
+        assertEquals(SManga.ON_HIATUS, parseStatus("hiato"))
+        assertEquals(SManga.CANCELLED, parseStatus("cancelado"))
+        assertEquals(SManga.UNKNOWN, parseStatus(null))
     }
 
     @Test
-    fun `ocultar pagos remove so os bloqueados`() {
-        val chapters = fixture("capitulos.json").parseAs<List<CapituloDto>>()
+    fun `hide paid removes only the locked ones`() {
+        val chapters = fixture("capitulos.json").parseAs<List<ChapterDto>>()
 
-        assertEquals(listOf("🔒 Capítulo 41", "Capítulo 3"), chapters.visiveis(ocultarPagos = false).map { it.nomeExibido() })
-        assertEquals(listOf("Capítulo 3"), chapters.visiveis(ocultarPagos = true).map { it.nomeExibido() })
+        assertEquals(listOf("🔒 Capítulo 41", "Capítulo 3"), chapters.visible(hidePaid = false).map { it.displayName() })
+        assertEquals(listOf("Capítulo 3"), chapters.visible(hidePaid = true).map { it.displayName() })
     }
 
     @Test
-    fun `filtros descartam tags sem obras e mantem os formatos`() {
-        val filtros = FiltrosDto(
+    fun `filters drop tags without works and keep the formats`() {
+        val filters = FiltersDto(
             tags = fixture("tags.json").parseAs(),
-            formatos = fixture("formatos.json").parseAs(),
+            formats = fixture("formatos.json").parseAs(),
         )
 
-        val tags = filtros.tagsComObras()
+        val tags = filters.tagsWithWorks()
 
         assertEquals(33, tags.size)
-        assertTrue(tags.none { it.obrasCount == 0 })
-        assertTrue(tags.any { it.nome == "Ação" && it.id == 1 })
-        assertEquals(7, filtros.formatos.size)
+        assertTrue(tags.none { it.worksCount == 0 })
+        assertTrue(tags.any { it.name == "Ação" && it.id == 1 })
+        assertEquals(7, filters.formats.size)
+    }
+
+    // Filter data is cached on disk for 3 days in the shape written by versions that named these fields in Portuguese.
+    @Test
+    fun `filter data cached by an older version still parses`() {
+        val cached = """{"tags":[{"id":1,"nome":"Ação","obrasCount":16}],"formatos":[{"nome":"Manhwa","slug":"manhwa"}]}"""
+
+        val filters = cached.parseAs<FiltersDto>()
+
+        assertEquals("Ação", filters.tags.single().name)
+        assertEquals(16, filters.tags.single().worksCount)
+        assertEquals("manhwa", filters.formats.single().slug)
     }
 
     @Test
-    fun `capitulo pago desbloqueado pela conta nao ganha cadeado`() {
-        val pago = fixture("capitulos.json").parseAs<List<CapituloDto>>()[0]
+    fun `paid chapter unlocked by the account has no lock`() {
+        val paid = fixture("capitulos.json").parseAs<List<ChapterDto>>()[0]
 
-        assertEquals("🔒 Capítulo 41", pago.nomeExibido())
-        assertEquals("Capítulo 41", pago.nomeExibido(desbloqueados = setOf(2043)))
-        assertTrue(pago.bloqueadoPara(setOf(1, 2)))
-        assertFalse(pago.bloqueadoPara(setOf(2043)))
+        assertEquals("🔒 Capítulo 41", paid.displayName())
+        assertEquals("Capítulo 41", paid.displayName(unlocked = setOf(2043)))
+        assertTrue(paid.isLockedFor(setOf(1, 2)))
+        assertFalse(paid.isLockedFor(setOf(2043)))
     }
 
     @Test
-    fun `ocultar pagos respeita os desbloqueados da conta`() {
-        val chapters = fixture("capitulos.json").parseAs<List<CapituloDto>>()
+    fun `hide paid respects the account's unlocked chapters`() {
+        val chapters = fixture("capitulos.json").parseAs<List<ChapterDto>>()
 
-        assertEquals(2, chapters.visiveis(ocultarPagos = true, desbloqueados = setOf(2043)).size)
+        assertEquals(2, chapters.visible(hidePaid = true, unlocked = setOf(2043)).size)
     }
 
     @Test
-    fun `se nao der para saber os desbloqueados nada e escondido`() {
-        val chapters = fixture("capitulos.json").parseAs<List<CapituloDto>>()
+    fun `when the unlocked chapters are unknown nothing is hidden`() {
+        val chapters = fixture("capitulos.json").parseAs<List<ChapterDto>>()
 
-        // Logado mas /desbloqueados falhou: melhor mostrar de mais do que esconder o que a conta tem.
-        assertEquals(2, chapters.visiveis(ocultarPagos = true, desbloqueados = null).size)
+        // Logged in but /desbloqueados failed: better to show too much than to hide what the account owns.
+        assertEquals(2, chapters.visible(hidePaid = true, unlocked = null).size)
     }
 
-    // desbloqueados.json foi inferido do JS do site (capId, expiraEm), não capturado de uma sessão real.
     @Test
-    fun `lista de desbloqueados vira conjunto de ids`() {
-        val ids = fixture("desbloqueados.json").parseAs<List<DesbloqueadoDto>>().map { it.capId }.toSet()
+    fun `without a session unlocked is unknown only when credentials exist`() {
+        assertNull(unlockedWithoutSession(hasCredentials = true))
+        assertEquals(emptySet<Int>(), unlockedWithoutSession(hasCredentials = false))
+    }
+
+    // desbloqueados.json was inferred from the site's JS (capId, expiraEm), not captured from a real session.
+    @Test
+    fun `unlocked list becomes a set of ids`() {
+        val ids = fixture("desbloqueados.json").parseAs<List<UnlockedDto>>().map { it.chapterId }.toSet()
 
         assertEquals(setOf(2043, 9999), ids)
     }
 
     @Test
-    fun `tokens e usuario sao lidos ignorando campos extras`() {
+    fun `tokens and user are read ignoring extra fields`() {
         val tokens = """{"accessToken":"a","refreshToken":"r","user":{"id":1}}""".parseAs<TokensDto>()
-        val usuario = """{"id":7,"nome":"Fulano","email":"x@y.z"}""".parseAs<UsuarioDto>()
+        val user = """{"id":7,"nome":"Fulano","email":"x@y.z"}""".parseAs<UserDto>()
 
         assertEquals("a" to "r", tokens.accessToken to tokens.refreshToken)
-        assertEquals("Fulano", usuario.nome)
+        assertEquals("Fulano", user.name)
     }
 
     @Test
-    fun `corpo do refresh so leva o refreshToken`() {
+    fun `refresh body only carries the refreshToken`() {
         assertEquals("""{"refreshToken":"tok"}""", RefreshRequest("tok").toJsonString())
     }
 
     @Test
-    fun `so rejeicao clara de autenticacao derruba a sessao`() {
-        assertTrue(sessaoRejeitada(401, null))
-        assertTrue(sessaoRejeitada(403, "Forbidden"))
-        assertTrue(sessaoRejeitada(400, "Refresh token inválido"))
-        // Queda de rede, erro do servidor e limite de requisições não podem deslogar o usuário.
-        assertFalse(sessaoRejeitada(400, "property x should not exist"))
-        assertFalse(sessaoRejeitada(429, "Too many requests"))
-        assertFalse(sessaoRejeitada(500, "Internal server error"))
-        assertFalse(sessaoRejeitada(502, null))
-        assertFalse(sessaoRejeitada(200, null))
+    fun `only a clear rejection drops the session`() {
+        assertTrue(isSessionRejected(401, null))
+        assertTrue(isSessionRejected(403, "Forbidden"))
+        assertTrue(isSessionRejected(400, "Refresh token inválido"))
+        // Network drops, server errors and rate limits must not sign the user out.
+        assertFalse(isSessionRejected(400, "property x should not exist"))
+        assertFalse(isSessionRejected(429, "Too many requests"))
+        assertFalse(isSessionRejected(500, "Internal server error"))
+        assertFalse(isSessionRejected(502, null))
+        assertFalse(isSessionRejected(200, null))
     }
 
     @Test
-    fun `corpo do login leva e-mail, senha e o token do turnstile`() {
+    fun `login body keeps the API's Portuguese key for the password`() {
         assertEquals(
             """{"email":"a@b.c","senha":"s3nha","turnstileToken":"tk"}""",
             LoginRequest("a@b.c", "s3nha", "tk").toJsonString(),
@@ -223,34 +241,45 @@ class DtoTest {
     }
 
     @Test
-    fun `pagina do turnstile leva a sitekey e expoe o token`() {
-        val html = turnstileHtml("SITEKEY-123")
-
-        assertTrue(html.contains("sitekey: 'SITEKEY-123'"))
-        assertTrue(html.contains("https://challenges.cloudflare.com/turnstile/v0/api.js"))
-        assertTrue(html.contains("window.__tk = t"))
+    fun `login failure is classified so the user knows what to fix`() {
+        assertEquals(LoginFailure.CREDENTIALS, classifyLoginFailure(401, "Credenciais inválidas"))
+        assertEquals(LoginFailure.CREDENTIALS, classifyLoginFailure(400, null))
+        assertEquals(LoginFailure.VERIFICATION, classifyLoginFailure(400, "Falha na verificação do Turnstile"))
+        assertEquals(LoginFailure.VERIFICATION, classifyLoginFailure(403, "captcha inválido"))
+        assertEquals(LoginFailure.OTHER, classifyLoginFailure(500, "Internal server error"))
+        assertEquals(LoginFailure.OTHER, classifyLoginFailure(429, "Too many requests"))
     }
 
     @Test
-    fun `falha de login e classificada para o usuario saber o que corrigir`() {
-        assertEquals(FalhaLogin.CREDENCIAIS, classificarFalhaLogin(401, "Credenciais inválidas"))
-        assertEquals(FalhaLogin.CREDENCIAIS, classificarFalhaLogin(400, null))
-        assertEquals(FalhaLogin.VERIFICACAO, classificarFalhaLogin(400, "Falha na verificação do Turnstile"))
-        assertEquals(FalhaLogin.VERIFICACAO, classificarFalhaLogin(403, "captcha inválido"))
-        assertEquals(FalhaLogin.OUTRA, classificarFalhaLogin(500, "Internal server error"))
-        assertEquals(FalhaLogin.OUTRA, classificarFalhaLogin(429, "Too many requests"))
+    fun `a failed login is not retried until the backoff window passes`() {
+        val retryAfter = 5 * 60 * 1000L
+
+        assertTrue(shouldRetryLogin(lastFailureAt = null, now = 1_000, retryAfterMs = retryAfter))
+        assertFalse(shouldRetryLogin(lastFailureAt = 1_000, now = 1_000 + retryAfter - 1, retryAfterMs = retryAfter))
+        assertTrue(shouldRetryLogin(lastFailureAt = 1_000, now = 1_000 + retryAfter, retryAfterMs = retryAfter))
     }
 
     @Test
-    fun `login automatico so uma vez por sessao do app e so com credenciais`() {
-        assertTrue(deveLogarSozinho(temCredenciais = true, jaTentou = false))
-        assertFalse(deveLogarSozinho(temCredenciais = true, jaTentou = true))
-        assertFalse(deveLogarSozinho(temCredenciais = false, jaTentou = false))
+    fun `password summary never shows the value`() {
+        assertEquals("Não definida", passwordSummary("", connected = false))
+        assertFalse(passwordSummary("s3nha", connected = false).contains("s3nha"))
+        assertTrue(passwordSummary("s3nha", connected = true).contains("Conectado"))
+        assertFalse(passwordSummary("s3nha", connected = false).contains("Conectado"))
     }
 
     @Test
-    fun `resumo da senha nunca mostra o valor`() {
-        assertEquals("Não definida", resumoSenha(""))
-        assertFalse(resumoSenha("s3nha").contains("s3nha"))
+    fun `details are fetched only when requested or when the id is unknown`() {
+        assertFalse(needsDetails(fetchDetails = false, knownId = 39))
+        assertTrue(needsDetails(fetchDetails = true, knownId = 39))
+        // Library entries saved by older versions have no id in memo yet.
+        assertTrue(needsDetails(fetchDetails = false, knownId = null))
+    }
+
+    @Test
+    fun `a chapter only triggers a login when no pages came back without a session and credentials exist`() {
+        assertFalse(shouldLoginForPages(pagesEmpty = false, hadSession = false, hasCredentials = true))
+        assertFalse(shouldLoginForPages(pagesEmpty = true, hadSession = true, hasCredentials = true))
+        assertFalse(shouldLoginForPages(pagesEmpty = true, hadSession = false, hasCredentials = false))
+        assertTrue(shouldLoginForPages(pagesEmpty = true, hadSession = false, hasCredentials = true))
     }
 }
