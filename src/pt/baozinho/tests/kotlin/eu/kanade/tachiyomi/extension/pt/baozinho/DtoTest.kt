@@ -251,16 +251,6 @@ class DtoTest {
     }
 
     @Test
-    fun `login failure is classified so the user knows what to fix`() {
-        assertEquals(LoginFailure.CREDENTIALS, classifyLoginFailure(401, "Credenciais inválidas"))
-        assertEquals(LoginFailure.CREDENTIALS, classifyLoginFailure(400, null))
-        assertEquals(LoginFailure.VERIFICATION, classifyLoginFailure(400, "Falha na verificação do Turnstile"))
-        assertEquals(LoginFailure.VERIFICATION, classifyLoginFailure(403, "captcha inválido"))
-        assertEquals(LoginFailure.OTHER, classifyLoginFailure(500, "Internal server error"))
-        assertEquals(LoginFailure.OTHER, classifyLoginFailure(429, "Too many requests"))
-    }
-
-    @Test
     fun `a failed login is not retried until the backoff window passes`() {
         val failedAt = Instant.fromEpochMilliseconds(1_000)
         val retryAfter = 5.minutes
@@ -268,30 +258,6 @@ class DtoTest {
         assertTrue(shouldRetryLogin(lastFailureAt = null, now = failedAt, retryAfter = retryAfter))
         assertFalse(shouldRetryLogin(failedAt, failedAt + retryAfter - 1.milliseconds, retryAfter))
         assertTrue(shouldRetryLogin(failedAt, failedAt + retryAfter, retryAfter))
-    }
-
-    // Reviewer: HTTP failures are thrown as the library's HttpException, not as a hand-made IOException("HTTP ...").
-    @Test
-    fun `an unexpected login status becomes an HttpException with the code`() {
-        val error = loginError(500, "boom")
-
-        assertTrue(error is HttpException)
-        assertEquals(500, (error as HttpException).code)
-    }
-
-    @Test
-    fun `a rejected login keeps a message the user can act on`() {
-        val credentials = loginError(401, "invalid credentials")
-        val verification = loginError(403, "turnstile failed")
-
-        assertFalse(credentials is HttpException)
-        assertTrue(credentials.message!!.contains("E-mail ou senha"))
-        assertTrue(verification.message!!.contains("anti-robô"))
-    }
-
-    @Test
-    fun `a failed session renewal is an HttpException with the code`() {
-        assertEquals(503, (refreshError(503) as HttpException).code)
     }
 
     private fun response(code: Int) = Response.Builder()
@@ -318,6 +284,14 @@ class DtoTest {
         val error = assertThrows(HttpException::class.java) { response(503).orThrow() }
 
         assertEquals(503, error.code)
+    }
+
+    // Reviewer: no custom messages; login and refresh failures are plain HttpExceptions too.
+    @Test
+    fun `every failing status keeps its code, whatever the endpoint`() {
+        listOf(400, 401, 403, 429, 500).forEach { code ->
+            assertEquals(code, assertThrows(HttpException::class.java) { response(code).orThrow() }.code)
+        }
     }
 
     @Test

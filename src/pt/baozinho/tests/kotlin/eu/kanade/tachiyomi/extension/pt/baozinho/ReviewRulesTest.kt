@@ -27,6 +27,9 @@ class ReviewRulesTest {
     fun `auth headers are built from headersBuilder`() = assertNone(Regex("""\bheaders\.newBuilder\(\)"""), "use headersBuilder()")
 
     @Test
+    fun `no hand-made IOExceptions with custom messages`() = assertNone(Regex("""\bIOException\("""), "throw HttpException(code); the reviewer wants no custom errors")
+
+    @Test
     fun `no custom exception classes`() = assertNone(Regex("""class\s+\w+\s*(\(.*\))?\s*:\s*(\w*Exception|IOException|RuntimeException)"""), "use standard exceptions")
 
     @Test
