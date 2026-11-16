@@ -29,6 +29,17 @@ class ReviewRulesTest {
     @Test
     fun `no hand-made IOExceptions with custom messages`() = assertNone(Regex("""\bIOException\("""), "throw HttpException(code); the reviewer wants no custom errors")
 
+    // The maintainer's pattern: the only error this source creates is HttpException(code); everything else is rethrown as is.
+    @Test
+    fun `the only exception ever created is HttpException`() {
+        val thrown = Regex("""\bthrow\s+(\w+)""")
+        val allowed = setOf("HttpException", "e", "it")
+        val offenders = sources.flatMap { (file, text) -> thrown.findAll(text).map { file to it.groupValues[1] } }.filter { it.second !in allowed }
+        assertTrue("sources found", sources.isNotEmpty())
+        assertTrue("throw only HttpException(code) or rethrow: $offenders", offenders.isEmpty())
+        assertTrue(sources.values.any { "throw HttpException(" in it })
+    }
+
     @Test
     fun `no custom exception classes`() = assertNone(Regex("""class\s+\w+\s*(\(.*\))?\s*:\s*(\w*Exception|IOException|RuntimeException)"""), "use standard exceptions")
 
