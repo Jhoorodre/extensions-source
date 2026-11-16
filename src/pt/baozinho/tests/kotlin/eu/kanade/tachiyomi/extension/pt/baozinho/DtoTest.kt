@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.extension.pt.baozinho
 
+import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.source.model.SManga
 import keiyoushi.utils.parseAs
 import keiyoushi.utils.toJsonString
@@ -12,6 +13,9 @@ import org.junit.BeforeClass
 import org.junit.Test
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.addSingleton
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 // Fixtures are real responses from api.baozinho.com (tests/resources).
 // SManga/SChapter.create() are stubs on the JVM, so only the pure logic is tested here.
@@ -252,11 +256,36 @@ class DtoTest {
 
     @Test
     fun `a failed login is not retried until the backoff window passes`() {
-        val retryAfter = 5 * 60 * 1000L
+        val failedAt = Instant.fromEpochMilliseconds(1_000)
+        val retryAfter = 5.minutes
 
-        assertTrue(shouldRetryLogin(lastFailureAt = null, now = 1_000, retryAfterMs = retryAfter))
-        assertFalse(shouldRetryLogin(lastFailureAt = 1_000, now = 1_000 + retryAfter - 1, retryAfterMs = retryAfter))
-        assertTrue(shouldRetryLogin(lastFailureAt = 1_000, now = 1_000 + retryAfter, retryAfterMs = retryAfter))
+        assertTrue(shouldRetryLogin(lastFailureAt = null, now = failedAt, retryAfter = retryAfter))
+        assertFalse(shouldRetryLogin(failedAt, failedAt + retryAfter - 1.milliseconds, retryAfter))
+        assertTrue(shouldRetryLogin(failedAt, failedAt + retryAfter, retryAfter))
+    }
+
+    // Reviewer: HTTP failures are thrown as the library's HttpException, not as a hand-made IOException("HTTP ...").
+    @Test
+    fun `an unexpected login status becomes an HttpException with the code`() {
+        val error = loginError(500, "boom")
+
+        assertTrue(error is HttpException)
+        assertEquals(500, (error as HttpException).code)
+    }
+
+    @Test
+    fun `a rejected login keeps a message the user can act on`() {
+        val credentials = loginError(401, "invalid credentials")
+        val verification = loginError(403, "turnstile failed")
+
+        assertFalse(credentials is HttpException)
+        assertTrue(credentials.message!!.contains("E-mail ou senha"))
+        assertTrue(verification.message!!.contains("anti-robô"))
+    }
+
+    @Test
+    fun `a failed session renewal is an HttpException with the code`() {
+        assertEquals(503, (refreshError(503) as HttpException).code)
     }
 
     @Test
