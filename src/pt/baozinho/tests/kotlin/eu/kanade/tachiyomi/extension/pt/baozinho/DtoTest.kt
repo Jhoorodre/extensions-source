@@ -6,7 +6,13 @@ import keiyoushi.utils.parseAs
 import keiyoushi.utils.toJsonString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import okhttp3.Headers
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
@@ -286,6 +292,50 @@ class DtoTest {
     @Test
     fun `a failed session renewal is an HttpException with the code`() {
         assertEquals(503, (refreshError(503) as HttpException).code)
+    }
+
+    private fun response(code: Int) = Response.Builder()
+        .request(Request.Builder().url("https://api.baozinho.com/x").build())
+        .protocol(Protocol.HTTP_1_1)
+        .code(code)
+        .message("m")
+        .build()
+
+    // Reviewer: auth headers come from the source's headersBuilder().
+    @Test
+    fun `bearer token is added to the base headers and absent without a token`() {
+        val base = { Headers.Builder().add("User-Agent", "ua") }
+
+        val withToken = bearerHeaders(base(), "abc")
+        assertEquals("Bearer abc", withToken["Authorization"])
+        assertEquals("ua", withToken["User-Agent"])
+        assertNull(bearerHeaders(base(), null)["Authorization"])
+        assertEquals("ua", bearerHeaders(base(), null)["User-Agent"])
+    }
+
+    @Test
+    fun `an unsuccessful response throws HttpException with its code`() {
+        val error = assertThrows(HttpException::class.java) { response(503).orThrow() }
+
+        assertEquals(503, error.code)
+    }
+
+    @Test
+    fun `a successful response passes through`() {
+        val ok = response(200)
+
+        assertSame(ok, ok.orThrow())
+    }
+
+    // Reviewer: the backoff rethrows the stored failure (an HttpException stays one).
+    @Test
+    fun `inside the backoff window the stored failure is rethrown as is`() {
+        val failedAt = Instant.fromEpochMilliseconds(1_000)
+        val stored = HttpException(500)
+
+        assertSame(stored, failureToRethrow(failedAt to stored, failedAt + 1.minutes, 5.minutes))
+        assertNull(failureToRethrow(failedAt to stored, failedAt + 5.minutes, 5.minutes))
+        assertNull(failureToRethrow(null, failedAt, 5.minutes))
     }
 
     @Test

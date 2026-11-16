@@ -37,4 +37,25 @@ class ReviewRulesTest {
         assertTrue(sources.values.any { "getTurnstileToken(" in it })
         assertFalse(sources.values.any { "turnstileHtml" in it })
     }
+
+    @Test
+    fun `filters have no placeholder header`() = assertNone(Regex("""Filter\.Header"""), "the reviewer asked for no filler UI")
+
+    @Test
+    fun `every declared identifier is in english`() {
+        // Declared names only: user-facing strings and the API's @SerialName keys stay in Portuguese.
+        val portuguese = Regex(
+            "obra|cap[ií]tulo|capitulo|senha|entrar|sess[aã]o|desbloque|credencia|filtro|carreg|nome|imagem|descri[cç][aã]o|autor|lan[cç]ad|gratuito|p[aá]ginas|titulo|t[ií]tulo|numero|n[uú]mero|ausente|recusad|verifica[cç]",
+            RegexOption.IGNORE_CASE,
+        )
+        val declared = Regex("""\b(?:val|var|fun|class|object)\s+(?:[\w<>]+\.)?(\w+)""")
+        val offenders = sources.flatMap { (file, text) -> declared.findAll(text).map { file to it.groupValues[1] } }
+            .filter { portuguese.containsMatchIn(it.second) }
+        assertTrue("Portuguese identifiers: $offenders", offenders.isEmpty())
+    }
+
+    @Test
+    fun `auth headers start from the source's headersBuilder`() {
+        assertTrue(sources["Baozinho.kt"]!!.contains("headersBuilder()"))
+    }
 }
