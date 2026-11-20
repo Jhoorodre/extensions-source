@@ -1,6 +1,7 @@
 """Atualiza um repositório de extensões no formato legado do Mihon (repo.json + index.min.json + apk/).
 
-Uso: publish.py <pasta com o APK e o keiyoushi-source-info.json> <pasta do repositório publicado> [ícone.png]
+Uso: publish.py <pasta de artefatos> <pasta do repositório publicado>
+Cada subpasta de artefatos é uma extensão, com o keiyoushi-source-info.json, o APK e o ic_launcher.png.
 """
 import json
 import os
@@ -52,26 +53,53 @@ def merge_index(existing, entry):
     return sorted([e for e in existing if e["pkg"] != entry["pkg"]] + [entry], key=lambda e: e["pkg"])
 
 
-def main(artifacts, out, icon=None):
-    info = json.loads(next(artifacts.glob("**/keiyoushi-source-info.json")).read_text(encoding="utf-8"))
-    apk = next(artifacts.glob("**/*.apk"))
-    fingerprint = parse_fingerprint(
-        subprocess.run([find_apksigner(), "verify", "--print-certs", str(apk)], capture_output=True, text=True, check=True).stdout
-    )
+def extension_dirs(artifacts):
+    if not artifacts.is_dir():
+        return []
+    return sorted(d for d in artifacts.iterdir() if d.is_dir() and any(d.glob("**/keiyoushi-source-info.json")))
+
+
+def single_fingerprint(fingerprints):
+    unique = set(fingerprints)
+    if len(unique) != 1:
+        raise ValueError(f"as extensões precisam da mesma chave de assinatura, achei: {sorted(unique)}")
+    return unique.pop()
+
+
+def read_extension(folder):
+    info = json.loads(next(folder.glob("**/keiyoushi-source-info.json")).read_text(encoding="utf-8"))
+    apk = next(folder.glob("**/*.apk"), None)
+    if apk is None:
+        raise FileNotFoundError(f"{folder.name}: nenhum APK no artefato")
+    return info, apk, next(folder.glob("**/ic_launcher.png"), None)
+
+
+def apksigner_fingerprint(apk):
+    result = subprocess.run([find_apksigner(), "verify", "--print-certs", str(apk)], capture_output=True, text=True, check=True)
+    return parse_fingerprint(result.stdout)
+
+
+def main(artifacts, out, fingerprint_of=apksigner_fingerprint):
+    folders = extension_dirs(artifacts)
+    if not folders:
+        raise FileNotFoundError(f"nenhum artefato de extensão em {artifacts}")
+    # Tudo é lido e conferido antes de escrever: uma extensão com problema não publica nada.
+    extensions = [read_extension(folder) for folder in folders]
+    fingerprint = single_fingerprint([fingerprint_of(apk) for _, apk, _ in extensions])
 
     apk_dir = out / "apk"
     apk_dir.mkdir(parents=True, exist_ok=True)
-    module = info["packageName"].removeprefix("eu.kanade.tachiyomi.extension.")
-    for old in apk_dir.glob(f"tachiyomi-{module}-*.apk"):
-        old.unlink()
-    (apk_dir / apk.name).write_bytes(apk.read_bytes())
-    if icon:
-        (out / "icon").mkdir(exist_ok=True)
-        (out / "icon" / f"{info['packageName']}.png").write_bytes(icon.read_bytes())
-
     index_file = out / "index.min.json"
-    existing = json.loads(index_file.read_text(encoding="utf-8")) if index_file.exists() else []
-    entries = merge_index(existing, make_entry(info, apk.name))
+    entries = json.loads(index_file.read_text(encoding="utf-8")) if index_file.exists() else []
+    for info, apk, icon in extensions:
+        module = info["packageName"].removeprefix("eu.kanade.tachiyomi.extension.")
+        for old in apk_dir.glob(f"tachiyomi-{module}-*.apk"):
+            old.unlink()
+        (apk_dir / apk.name).write_bytes(apk.read_bytes())
+        if icon:
+            (out / "icon").mkdir(exist_ok=True)
+            (out / "icon" / f"{info['packageName']}.png").write_bytes(icon.read_bytes())
+        entries = merge_index(entries, make_entry(info, apk.name))
     index_file.write_text(json.dumps(entries, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
     meta = {"name": "Nox Extensions", "shortName": "NOX", "website": WEBSITE, "signingKeyFingerprint": fingerprint}
@@ -79,4 +107,4 @@ def main(artifacts, out, icon=None):
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]) if len(sys.argv) > 3 else None)
+    main(Path(sys.argv[1]), Path(sys.argv[2]))
