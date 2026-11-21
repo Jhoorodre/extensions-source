@@ -16,7 +16,6 @@ import keiyoushi.utils.parseAs
 import kotlinx.serialization.json.JsonElement
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.jsoup.nodes.Document
 import java.io.IOException
 
@@ -104,7 +103,13 @@ abstract class Fliptru : KeiSource() {
         val document = client.get(baseUrl + manga.url, Fetch.DOCUMENT).asJsoup()
         return SMangaUpdate(
             manga = parseMangaDetails(document, manga.url),
-            chapters = parseChapterList(document),
+            chapters = fetchAllChapters(document) { client.get(baseUrl + it, Fetch.XHR).asJsoup() }.map {
+                SChapter.create().apply {
+                    url = it.path
+                    name = it.name
+                    chapter_number = it.number
+                }
+            },
         )
     }
 
@@ -132,25 +137,6 @@ abstract class Fliptru : KeiSource() {
             author = ld?.author?.name?.ifBlank { null }
             genre = ld?.genre?.ifBlank { null }
         }
-    }
-
-    private val chapterSlugRegex = Regex("/comic/[^/]+/([^/?#]+)")
-
-    private fun parseChapterList(document: Document): List<SChapter> {
-        return document.select("#chapterListContainer .chapter-list-item a[href]")
-            .mapNotNull { link ->
-                val path = link.attr("abs:href").toHttpUrlOrNull()?.encodedPath
-                    ?: return@mapNotNull null
-                val slug = chapterSlugRegex.find(path)?.groupValues?.get(1) ?: return@mapNotNull null
-                val name = link.text().ifBlank { "Capítulo $slug" }
-                SChapter.create().apply {
-                    url = path
-                    this.name = name
-                    chapter_number = slug.toFloatOrNull() ?: 0f
-                }
-            }
-            .distinctBy { it.url }
-            .sortedByDescending { it.chapter_number }
     }
 
     override suspend fun getPageList(chapter: SChapter): List<Page> {

@@ -1,3 +1,4 @@
 # Extensões que o CI testa, builda e publica no repositório do Mihon (uma por linha: src/<lang>/<nome>).
 src/pt/baozinho
 src/pt/mediocretoons
+src/pt/fliptru
