@@ -42,3 +42,13 @@ internal suspend fun fetchAllChapters(
     }
     return entries.distinctBy { it.path }.sortedByDescending { it.number }
 }
+
+// Two reader layouts coexist: older series use div.comic_page_image, newer ones a carousel of div.comic-page-image
+// (the carousel also keeps an empty comic_page_image placeholder, which has no <img>).
+internal fun parsePageUrls(document: Document): List<String> = document.select("div.comic_page_image img, div.comic-page-image img")
+    .mapNotNull { img ->
+        img.attr("abs:data-src")
+            .ifBlank { img.attr("abs:src") }
+            .takeIf { it.startsWith("http") }
+    }
+    .distinct()

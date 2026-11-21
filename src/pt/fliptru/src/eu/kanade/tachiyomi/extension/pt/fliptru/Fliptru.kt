@@ -145,13 +145,7 @@ abstract class Fliptru : KeiSource() {
             throw IOException("Este capítulo exige login (restrito por idade)")
         }
         val document = response.asJsoup()
-        return document.select("div.comic_page_image img")
-            .mapNotNull { img ->
-                img.attr("abs:data-src")
-                    .ifBlank { img.attr("abs:src") }
-                    .takeIf { it.startsWith("http") }
-            }
-            .distinct()
+        return parsePageUrls(document)
             .mapIndexed { index, url -> Page(index, imageUrl = url) }
     }
 }
