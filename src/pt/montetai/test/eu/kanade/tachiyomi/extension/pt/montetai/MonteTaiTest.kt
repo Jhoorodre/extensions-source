@@ -16,9 +16,9 @@ class MonteTaiTest {
     private val json = Json { ignoreUnknownKeys = true }
 
     @Test
-    fun cdnImagesAreNotRateLimited() {
+    fun cdnImagesUseMediaRateLimitTier() {
         assertFalse(
-            shouldRateLimit(
+            isDynamicSiteRequest(
                 "https://cdn.montetaiscanlator.xyz/manga/mediocretoons/obra-teste/1-mediocretoons-12345/001.webp".toHttpUrl(),
                 "montetaiscanlator.xyz",
             ),
@@ -26,9 +26,9 @@ class MonteTaiTest {
     }
 
     @Test
-    fun wordpressUploadsAreNotRateLimited() {
+    fun wordpressUploadsUseMediaRateLimitTier() {
         assertFalse(
-            shouldRateLimit(
+            isDynamicSiteRequest(
                 "https://montetaiscanlator.xyz/wp-content/uploads/2024/12/capa-obra.gif".toHttpUrl(),
                 "montetaiscanlator.xyz",
             ),
@@ -36,9 +36,9 @@ class MonteTaiTest {
     }
 
     @Test
-    fun externalImageHostsAreNotRateLimited() {
+    fun externalImageHostsUseMediaRateLimitTier() {
         assertFalse(
-            shouldRateLimit(
+            isDynamicSiteRequest(
                 "https://img.example.net/chapter/001.webp".toHttpUrl(),
                 "montetaiscanlator.xyz",
             ),
@@ -46,21 +46,21 @@ class MonteTaiTest {
     }
 
     @Test
-    fun ajaxAndPagesOnBaseHostAreRateLimited() {
+    fun ajaxAndPagesOnBaseHostUseSiteRateLimitTier() {
         assertTrue(
-            shouldRateLimit(
+            isDynamicSiteRequest(
                 "https://montetaiscanlator.xyz/wp-admin/admin-ajax.php".toHttpUrl(),
                 "montetaiscanlator.xyz",
             ),
         )
         assertTrue(
-            shouldRateLimit(
+            isDynamicSiteRequest(
                 "https://montetaiscanlator.xyz/manga/obra-teste/".toHttpUrl(),
                 "montetaiscanlator.xyz",
             ),
         )
         assertTrue(
-            shouldRateLimit(
+            isDynamicSiteRequest(
                 "https://montetaiscanlator.xyz/manga/obra-teste/capitulo-1/".toHttpUrl(),
                 "montetaiscanlator.xyz",
             ),
@@ -71,19 +71,19 @@ class MonteTaiTest {
     fun rateLimitFollowsDynamicBaseHost() {
         val baseHost = "mirror.example.org"
         assertTrue(
-            shouldRateLimit(
+            isDynamicSiteRequest(
                 "https://mirror.example.org/wp-admin/admin-ajax.php".toHttpUrl(),
                 baseHost,
             ),
         )
         assertFalse(
-            shouldRateLimit(
+            isDynamicSiteRequest(
                 "https://cdn.mirror.example.org/001.webp".toHttpUrl(),
                 baseHost,
             ),
         )
         assertFalse(
-            shouldRateLimit(
+            isDynamicSiteRequest(
                 "https://montetaiscanlator.xyz/wp-admin/admin-ajax.php".toHttpUrl(),
                 baseHost,
             ),
@@ -112,11 +112,13 @@ class MonteTaiTest {
     }
 
     @Test
-    fun configureClientScopesRateLimit() {
+    fun configureClientUsesSeparateSiteAndMediaRateLimits() {
         val source = readSource()
         assertTrue(
-            Regex("""rateLimit\([^)]*\)\s*\{[^}]*shouldRateLimit\(""", RegexOption.DOT_MATCHES_ALL)
-                .containsMatchIn(source),
+            Regex(
+                """rateLimit\(\s*3\s*,\s*1\.seconds\s*\)\s*\{[^}]*isDynamicSiteRequest\([^)]*\)\s*\}\s*\.rateLimit\(\s*10\s*,\s*1\.seconds\s*\)""",
+                RegexOption.DOT_MATCHES_ALL,
+            ).containsMatchIn(source),
         )
     }
 
